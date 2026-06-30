@@ -1,1 +1,70 @@
-<p>signup works!</p>
+<div class="signup-container">
+  <h2>Create your Account</h2>
+
+  <form (submit)="onSubmit($event)" class="signup-form">
+    
+    <mat-form-field appearance="outline">
+      <mat-label>Name</mat-label>
+      <input matInput type="text" id="name" [formField]="signupForm.name" placeholder="name" />
+      
+      @if (signupForm.name().touched() && !signupForm.name().valid()) {
+        @for (error of signupForm.name().errors(); track error.kind) {
+          <mat-error>{{ error.message }}</mat-error>
+        }
+      }
+    </mat-form-field>
+    
+    <mat-form-field appearance="outline">
+      <mat-label>Email Address</mat-label>
+      <input matInput type="email" id="email" [formField]="signupForm.email" placeholder="name@example.com" />
+      
+      @if (signupForm.email().touched() && !signupForm.email().valid()) {
+        @for (error of signupForm.email().errors(); track error.kind) {
+          <mat-error>{{ error.message }}</mat-error>
+        }
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Mobile Number</mat-label>
+      <input matInput type="text" id="mobile" [formField]="signupForm.mobile" placeholder="Mobile No." />
+      
+      @if (signupForm.mobile().touched() && !signupForm.mobile().valid()) {
+        @for (error of signupForm.mobile().errors(); track error.kind) {
+          <mat-error>{{ error.message }}</mat-error>
+        }
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Password</mat-label>
+      <input matInput type="password" id="password" [formField]="signupForm.password" />
+      
+      @if (signupForm.password().touched() && !signupForm.password().valid()) {
+        @for (error of signupForm.password().errors(); track error.kind) {
+          <mat-error>{{ error.message }}</mat-error>
+        }
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Confirm Password</mat-label>
+      <input matInput type="password" id="confirmPassword" [formField]="signupForm.confirmPassword" />
+      
+      @if (signupForm.confirmPassword().touched() && !signupForm.confirmPassword().valid()) {
+        @for (error of signupForm.confirmPassword().errors(); track error.kind) {
+          <mat-error>{{ error.message }}</mat-error>
+        }
+      }
+    </mat-form-field>
+
+    <button mat-raised-button color="primary" type="submit" [disabled]="!signupForm().valid()">
+      Sign Up
+    </button>
+
+  </form>
+
+  <p class="login-redirect">
+    Already have an account? <a routerLink="/login">Log in here</a>
+  </p>
+</div>

@@ -1,1 +1,21 @@
 /* You can add global styles to this file, and also import other style files */
+/* Green background for creation */
+.snackbar-success {
+  --mdc-snackbar-container-color: #2e7d32 !important; /* Material green-800 */
+  --mdc-snackbar-supporting-text-color: #ffffff !important;
+  --mat-snack-bar-button-color: #ffffff !important;
+}
+
+/* Blue background for updates */
+.snackbar-info {
+  --mdc-snackbar-container-color: #1565c0 !important; /* Material blue-800 */
+  --mdc-snackbar-supporting-text-color: #ffffff !important;
+  --mat-snack-bar-button-color: #ffffff !important;
+}
+
+/* Red background for deletions */
+.snackbar-error {
+  --mdc-snackbar-container-color: #c62828 !important; /* Material red-800 */
+  --mdc-snackbar-supporting-text-color: #ffffff !important;
+  --mat-snack-bar-button-color: #ffffff !important;
+}
