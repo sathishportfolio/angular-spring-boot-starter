@@ -5,6 +5,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { Router, RouterLink } from '@angular/router';
+import { Auth } from '../services/auth';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { TokenService } from '../../../core/services/token';
 
 @Component({
   selector: 'app-login',
@@ -16,31 +19,19 @@ import { Router, RouterLink } from '@angular/router';
 
 export class Login {
 
-  private apiService = inject(ApiService);
+  private authService = inject(Auth);
+  private tokenservice = inject(TokenService);
   private router = inject(Router);
+  private snackBar = inject(MatSnackBar);
 
-  // private cdr = inject(ChangeDetectorRef);
+  ngOnInit() { }
 
-  response = signal('Loading...');
-
-  ngOnInit() {
-    this.apiService.getHome().subscribe({
-      next: (data) => {
-        this.response.set(data);
-        console.log(this.response());
-
-      },
-      error: (err) => {
-        this.response.set('Backend not reachable');
-        console.error(this.response());
-        console.error(err);
-      }
-    });
-  }
+  errorMessage: string = '';
+  isLoading = signal(false);
 
   userModel = signal({
-    email: '',
-    password: ''
+    email: 'rsathishkumar4@gmail.com',
+    password: '123456'
   });
 
   loginForm = form(
@@ -54,8 +45,39 @@ export class Login {
     {
       submission: {
         action: async () => {
-          console.log('Form Submitted Safely via FormRoot!', this.userModel());
-          this.router.navigate(['/dashboard']);
+          this.isLoading.set(true);
+          this.errorMessage = '';
+
+          this.authService.login(this.userModel()).subscribe({
+            next: (response) => {
+
+              this.tokenservice.saveTokens(response.username, response.accessToken, response.refreshToken);
+
+              setTimeout(() => {
+                this.isLoading.set(false);
+                this.snackBar.open('User logged in successfully!', 'Close', {
+                  duration: 3000,
+                  horizontalPosition: 'center',
+                  verticalPosition: 'bottom'
+                });
+
+                this.router.navigate(['/dashboard']);
+              }, 1000);
+            },
+            error: (err) => {
+              setTimeout(() => {
+                this.isLoading.set(false);
+
+                this.errorMessage = err.error?.error || 'An unexpected error occurred during signup.';
+
+                this.snackBar.open(this.errorMessage, 'Close', {
+                  duration: 3000,
+                  horizontalPosition: 'center',
+                  verticalPosition: 'bottom'
+                });
+              }, 1000);
+            }
+          });
         }
       }
     }

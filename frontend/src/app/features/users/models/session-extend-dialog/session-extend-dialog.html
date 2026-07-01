@@ -1,0 +1,8 @@
+<h2 mat-dialog-title>Session Expiring</h2>
+<mat-dialog-content>
+    <p>Your session will expire in less than a minute due to inactivity. Would you like to stay logged in?</p>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+    <button mat-button (click)="onLogout()">Logout</button>
+    <button mat-raised-button color="primary" (click)="onExtend()">Stay Logged In</button>
+</mat-dialog-actions>

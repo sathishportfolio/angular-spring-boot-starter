@@ -14,7 +14,7 @@
                 <mat-label>Filter Column</mat-label>
                 <mat-select [ngModel]="filterColumn()" (ngModelChange)="filterColumn.set($event); applyFilter()">
                     <mat-option value="all">All Columns</mat-option>
-                    <mat-option value="name">Name</mat-option>
+                    <mat-option value="username">Name</mat-option>
                     <mat-option value="email">Email</mat-option>
                     <mat-option value="mobile">Mobile No.</mat-option>
                 </mat-select>
@@ -45,9 +45,9 @@
                 <td mat-cell *matCellDef="let element"> {{element.id}} </td>
             </ng-container>
 
-            <ng-container matColumnDef="name">
+            <ng-container matColumnDef="username">
                 <th mat-header-cell *matHeaderCellDef mat-sort-header> Name </th>
-                <td mat-cell *matCellDef="let element"> {{element.name}} </td>
+                <td mat-cell *matCellDef="let element"> {{element.username}} </td>
             </ng-container>
 
             <ng-container matColumnDef="email">

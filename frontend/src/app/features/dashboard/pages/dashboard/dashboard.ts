@@ -26,10 +26,13 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { UserFormDialog } from '../../../users/models/user-form-dialog/user-form-dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ConfirmDialog } from '../../../users/models/confirm-dialog/confirm-dialog';
+import { Auth } from '../../../auth/services/auth';
+import { TokenService } from '../../../../core/services/token';
+import { UserService } from '../../../users/services/user.service';
 
 export interface UserElement {
   id: number;
-  name: string;
+  username: string;
   email: string;
   mobile: string;
 }
@@ -55,32 +58,45 @@ export interface UserElement {
   styleUrl: './dashboard.css'
 })
 export class Dashboard implements AfterViewInit {
+  private authService = inject(Auth);
+  private userService = inject(UserService);
+  private tokenService = inject(TokenService);
   private router = inject(Router);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
 
-  // 1. Session mock signals
-  loggedInUser = signal('Sathish Kumar');
+  // 1. Session signals
+  loggedInUser = signal(this.tokenService.getUserName());
 
   // 2. Filter criteria signals
   filterColumn = signal<keyof UserElement | 'all'>('all');
   filterValue = signal('');
 
   // 3. User local dataset managed by an Angular Signal
-  usersList = signal<UserElement[]>([
-    { id: 1, name: 'Sathish Kumar', email: 'rsathishkumar4@gmail.com', mobile: '9876543210' },
-    { id: 2, name: 'Jane Doe', email: 'jane.doe@example.com', mobile: '9123456789' },
-    { id: 3, name: 'Alex Smith', email: 'alex.smith@example.com', mobile: '8123456780' },
-    { id: 4, name: 'John Miller', email: 'john.m@example.com', mobile: '7123456781' },
-    { id: 5, name: 'Emily Davis', email: 'emily.d@example.com', mobile: '6123456782' },
-  ]);
+  usersList = signal<UserElement[]>([]);
 
   // Material Table configuration references
-  displayedColumns: string[] = ['id', 'name', 'email', 'mobile', 'actions'];
+  displayedColumns: string[] = ['id', 'username', 'email', 'mobile', 'actions'];
   dataSource = new MatTableDataSource<UserElement>(this.usersList());
 
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild(MatPaginator) paginator!: MatPaginator;
+
+  ngOnInit() {
+    this.userService.getAllUsers().subscribe({
+      next: (res) => {
+        this.usersList.set(res);
+        this.refreshTable();
+      },
+      error: (err) => {
+        this.snackBar.open('Failed to load users!', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom'
+        });
+      }
+    });
+  }
 
   ngAfterViewInit() {
     this.dataSource.sort = this.sort;
@@ -93,7 +109,7 @@ export class Dashboard implements AfterViewInit {
 
       if (col === 'all') {
         return (
-          data.name.toLowerCase().includes(search) ||
+          data.username.toLowerCase().includes(search) ||
           data.email.toLowerCase().includes(search) ||
           data.mobile.includes(search)
         );
@@ -124,20 +140,13 @@ export class Dashboard implements AfterViewInit {
 
         const newUser: UserElement = {
           id: nextId,
-          name: result.name,
+          username: result.username,
           email: result.email,
           mobile: result.mobile
         };
 
         this.usersList.update(list => [...list, newUser]);
         this.refreshTable();
-
-        // Trigger Success SnackBar for Add User
-        this.snackBar.open('User created successfully!', 'Close', {
-          duration: 3000,
-          horizontalPosition: 'center',
-          verticalPosition: 'bottom'
-        });
       }
     });
   }
@@ -152,7 +161,7 @@ export class Dashboard implements AfterViewInit {
       if (result) {
         this.usersList.update(list =>
           list.map(u => u.id === user.id
-            ? { ...u, name: result.name, email: result.email, mobile: result.mobile }
+            ? { ...u, username: result.username, email: result.email, mobile: result.mobile }
             : u
           )
         );
@@ -176,13 +185,24 @@ export class Dashboard implements AfterViewInit {
 
     dialogRef.afterClosed().subscribe((confirmed: boolean) => {
       if (confirmed) {
-        this.usersList.update(list => list.filter(u => u.id !== id));
-        this.refreshTable();
+        this.userService.deleteUser(id).subscribe({
+          next: (res) => {this.deleteUser
+            this.usersList.update(list => list.filter(u => u.id !== id));
+            this.refreshTable();
 
-        this.snackBar.open('User deleted successfully.', 'Close', {
-          duration: 3000,
-          horizontalPosition: 'center',
-          verticalPosition: 'bottom'
+            this.snackBar.open('User deleted successfully.', 'Close', {
+              duration: 3000,
+              horizontalPosition: 'center',
+              verticalPosition: 'bottom'
+            });
+          },
+          error: (err) => {
+            this.snackBar.open('Failed to delete user!', 'Close', {
+              duration: 3000,
+              horizontalPosition: 'center',
+              verticalPosition: 'bottom'
+            });
+          }
         });
       }
     });
@@ -193,7 +213,19 @@ export class Dashboard implements AfterViewInit {
   }
 
   logout() {
-    console.log('Logging user out...');
+    this.authService.logout().subscribe({
+      next: () => this.finalizeLogout(),
+      error: () => this.finalizeLogout() // Fail-safe client clearance
+    });
+  }
+
+  private finalizeLogout(): void {
+    this.tokenService.clearTokens();
     this.router.navigate(['/login']);
+    this.snackBar.open("User logged out successfully!", 'Close', {
+      duration: 3000,
+      horizontalPosition: 'center',
+      verticalPosition: 'bottom'
+    });
   }
 }

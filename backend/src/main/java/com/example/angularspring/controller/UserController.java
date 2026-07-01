@@ -36,6 +36,9 @@ public class UserController {
 			return ResponseEntity.badRequest().body(Map.of("error", "Username already exists"));
 		}
 		// TODO : Check hibernate validation library uses
+		if (user.getPassword() == null || user.getPassword().isBlank()) {
+			user.setPassword("123456");
+		}
 		user.setPassword(passwordEncoder.encode(user.getPassword()));
 		User savedUser = userRepository.save(user);
 		return ResponseEntity.ok(savedUser);
@@ -44,7 +47,7 @@ public class UserController {
 	// 2. Get All Users
 	@GetMapping
 	public List<User> getAllUsers() {
-		return userRepository.findAll();
+		return userRepository.findAllByOrderByUsernameDesc();
 	}
 
 	// 3. Get User by ID
@@ -55,9 +58,11 @@ public class UserController {
 
 	// 4. Update User
 	@PutMapping("/{id}")
-	public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User userDetails) {
+	public ResponseEntity<?> updateUser(@PathVariable("id") Long id, @RequestBody User userDetails) {
 		return userRepository.findById(id).map(user -> {
 			user.setUsername(userDetails.getUsername());
+			user.setEmail(userDetails.getEmail());
+			user.setMobile(userDetails.getMobile());
 			if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
 				user.setPassword(passwordEncoder.encode(userDetails.getPassword()));
 			}
@@ -68,7 +73,7 @@ public class UserController {
 
 	// 5. Delete User
 	@DeleteMapping("/{id}")
-	public ResponseEntity<?> deleteUser(@PathVariable Long id) {
+	public ResponseEntity<?> deleteUser(@PathVariable("id") Long id) {
 		return userRepository.findById(id).map(user -> {
 			userRepository.delete(user);
 			return ResponseEntity.ok(Map.of("message", "User deleted successfully"));

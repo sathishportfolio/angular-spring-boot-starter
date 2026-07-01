@@ -5,6 +5,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../../core/services/api.service';
+import { Auth } from '../services/auth';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { timeout } from 'rxjs';
 
 @Component({
   selector: 'app-signup',
@@ -20,24 +23,28 @@ import { ApiService } from '../../../core/services/api.service';
 })
 export class Signup {
 
-  private apiService = inject(ApiService);
+  private auth = inject(Auth);
   private router = inject(Router);
+  private snackBar = inject(MatSnackBar);
+
+  errorMessage: string = '';
+  isLoading = signal(false);
 
   // 1. Raw form model managed via a Writable Signal
   signupModel = signal({
-    name: '',
-    email: '',
-    mobile: '',
-    password: '',
-    confirmPassword: ''
+    username: 'Sathishkumar00',
+    email: 'rsathishkumar00@gmail.com',
+    mobile: '9629992643',
+    password: '123456',
+    confirmPassword: '123456'
   });
 
   // 2. Build form tree & handle validation schemas
   signupForm = form(this.signupModel, (schemaPath) => {
 
     // Name rules
-    required(schemaPath.name, { message: 'Name is required' });
-    minLength(schemaPath.name, 3, { message: 'Must be at least 3 characters' });
+    required(schemaPath.username, { message: 'Name is required' });
+    minLength(schemaPath.username, 3, { message: 'Must be at least 3 characters' });
 
     // Email rules
     required(schemaPath.email, { message: 'Email is required' });
@@ -72,12 +79,38 @@ export class Signup {
 
   // 3. Form Submission handler
   onSubmit(event: Event) {
-    event.preventDefault(); // Stop native HTML page reload!
+    event.preventDefault();
+    this.isLoading.set(true);
+    this.errorMessage = '';
 
     if (this.signupForm().valid()) {
-      console.log('Account registered successfully!', this.signupModel());
-      // Call your backend API service here
-      this.router.navigate(['/dashboard']);
+      this.auth.signup(this.signupModel()).subscribe({
+        next: (response) => {
+          setTimeout(() => {
+            this.isLoading.set(false);
+            this.snackBar.open(response.message, 'Close', {
+              duration: 3000,
+              horizontalPosition: 'center',
+              verticalPosition: 'bottom'
+            });
+
+            this.router.navigate(['/login']);
+          }, 1000);
+        },
+        error: (err) => {
+          setTimeout(() => {
+            this.isLoading.set(false);
+
+            this.errorMessage = err.error?.error || 'An unexpected error occurred during signup.';
+
+            this.snackBar.open(this.errorMessage, 'Close', {
+              duration: 3000,
+              horizontalPosition: 'center',
+              verticalPosition: 'bottom'
+            });
+          }, 1000);
+        }
+      });
     }
   }
 }

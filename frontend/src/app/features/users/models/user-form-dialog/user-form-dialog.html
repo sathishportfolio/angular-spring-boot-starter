@@ -5,8 +5,8 @@
 
         <mat-form-field appearance="outline">
             <mat-label>Name</mat-label>
-            <input matInput [formField]="userForm.name" placeholder="John Doe" />
-            @if (userForm.name().touched() && !userForm.name().valid) {
+            <input matInput [formField]="userForm.username" placeholder="John Doe" />
+            @if (userForm.username().touched() && !userForm.username().valid) {
             <mat-error>Name is required</mat-error>
             }
         </mat-form-field>

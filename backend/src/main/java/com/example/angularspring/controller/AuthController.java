@@ -50,7 +50,7 @@ public class AuthController {
 
 	@PostMapping("/login")
 	public ResponseEntity<?> login(@RequestBody AuthRequest request) {
-		User user = userRepository.findByUsername(request.getUsername()).orElse(null);
+		User user = userRepository.findByEmail(request.getEmail()).orElse(null);
 
 		if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
 			return ResponseEntity.status(401).body(Map.of("error", "Invalid credentials"));
@@ -59,7 +59,7 @@ public class AuthController {
 		String accessToken = jwtUtil.generateAccessToken(user.getUsername());
 		RefreshToken refreshToken = jwtUtil.createRefreshToken(user.getUsername());
 
-		return ResponseEntity.ok(Map.of("accessToken", accessToken, "refreshToken", refreshToken.getToken()));
+		return ResponseEntity.ok(Map.of("username", user.getUsername(), "accessToken", accessToken, "refreshToken", refreshToken.getToken()));
 	}
 
 	@PostMapping("/refresh")
@@ -69,7 +69,7 @@ public class AuthController {
 		return refreshTokenRepository.findByToken(requestRefreshToken).map(jwtUtil::verifyExpiration)
 				.map(RefreshToken::getUser).map(user -> {
 					String token = jwtUtil.generateAccessToken(user.getUsername());
-					return ResponseEntity.ok(Map.of("accessToken", token, "refreshToken", requestRefreshToken));
+					return ResponseEntity.ok(Map.of("username", user.getUsername(), "accessToken", token, "refreshToken", requestRefreshToken));
 				})
 				.orElseGet(() -> ResponseEntity.status(403).body(Map.of("error", "Refresh token is not in database!")));
 	}
