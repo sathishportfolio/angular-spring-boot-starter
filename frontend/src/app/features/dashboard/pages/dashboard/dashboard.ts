@@ -1,14 +1,4 @@
-// import { Component } from '@angular/core';
-
-// @Component({
-//   selector: 'app-dashboard',
-//   imports: [],
-//   templateUrl: './dashboard.html',
-//   styleUrl: './dashboard.css',
-// })
-// export class Dashboard {}
-
-import { Component, inject, signal, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, inject, signal, ViewChild, AfterViewInit, effect } from '@angular/core';
 import { Router } from '@angular/router';
 
 // Angular Material Imports
@@ -17,7 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatSortModule, MatSort } from '@angular/material/sort';
-import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
+import { MatPaginatorModule, MatPaginator, PageEvent } from '@angular/material/paginator';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -29,6 +19,7 @@ import { ConfirmDialog } from '../../../users/models/confirm-dialog/confirm-dial
 import { Auth } from '../../../auth/services/auth';
 import { TokenService } from '../../../../core/services/token';
 import { UserService } from '../../../users/services/user.service';
+import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 
 export interface UserElement {
   id: number;
@@ -65,167 +56,157 @@ export class Dashboard implements AfterViewInit {
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
 
-  // 1. Session signals
   loggedInUser = signal(this.tokenService.getUserName());
 
-  // 2. Filter criteria signals
-  filterColumn = signal<keyof UserElement | 'all'>('all');
-  filterValue = signal('');
+  searchTerm = signal('');
+  private searchSubject = new Subject<string>();
 
-  // 3. User local dataset managed by an Angular Signal
-  usersList = signal<UserElement[]>([]);
+  // Pagination & Sort State Signals
+  pageSize = signal(5);
+  pageOffset = signal(0);
+  sortBy = signal('username');
+  sortDir = signal('desc');
 
-  // Material Table configuration references
+  // Total record server count (vital for MatPaginator math)
+  totalRecords = signal(0);
+  isLoading = signal(false);
+
   displayedColumns: string[] = ['id', 'username', 'email', 'mobile', 'actions'];
-  dataSource = new MatTableDataSource<UserElement>(this.usersList());
+  dataSource = new MatTableDataSource<UserElement>([]);
 
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
-  ngOnInit() {
-    this.userService.getAllUsers().subscribe({
-      next: (res) => {
-        this.usersList.set(res);
-        this.refreshTable();
-      },
-      error: (err) => {
-        this.snackBar.open('Failed to load users!', 'Close', {
-          duration: 3000,
-          horizontalPosition: 'center',
-          verticalPosition: 'bottom'
-        });
+  constructor() {
+
+    this.searchSubject.pipe(
+      debounceTime(400),        // Wait 400ms after the last keystroke before making a move
+      distinctUntilChanged()    // Prevent duplicate API calls if the user types then backspaces quickly
+    ).subscribe((searchValue) => {
+      // Minimum character check: only search if length >= 3 OR if it's completely empty (so they can clear it)
+      if (searchValue.length >= 3 || searchValue.length === 0) {
+        this.searchTerm.set(searchValue);
       }
+    });
+    
+    // 2. The Reactive Sync Engine
+    // Whenever any of these inner signals update, fetch fresh, targeted datasets instantly.
+    effect(() => {
+      this.fetchBackendData(
+        this.searchTerm(),
+        this.sortBy(),
+        this.sortDir(),
+        this.pageSize(),
+        this.pageOffset()
+      );
     });
   }
 
   ngAfterViewInit() {
-    this.dataSource.sort = this.sort;
-    this.dataSource.paginator = this.paginator;
-
-    // Custom filtering strategy to handle individual columns or global matching
-    this.dataSource.filterPredicate = (data: UserElement, filter: string) => {
-      const col = this.filterColumn();
-      const search = filter.trim().toLowerCase();
-
-      if (col === 'all') {
-        return (
-          data.username.toLowerCase().includes(search) ||
-          data.email.toLowerCase().includes(search) ||
-          data.mobile.includes(search)
-        );
+    // Bind Material Sort interactions to our reactive signals
+    this.sort.sortChange.subscribe((sortState) => {
+      if (sortState.direction) {
+        this.sortBy.set(sortState.active);
+        this.sortDir.set(sortState.direction);
       } else {
-        return String(data[col]).toLowerCase().includes(search);
+        // Fallback defaults when sorting is toggled completely off
+        this.sortBy.set('id');
+        this.sortDir.set('asc');
       }
-    };
+      this.resetToFirstPage();
+    });
   }
 
-  // 4. Filtering Logic
+  ngOnDestroy() {
+    this.searchSubject.complete();
+  }
+
+  onSearchChange(newValue: string) {
+    this.searchSubject.next(newValue);
+  }
+
+  clearSearch() {
+    this.searchTerm.set('');
+  }
+
+  // 3. Centralized REST Network Trigger
+  private fetchBackendData(search: string, sortBy: string, sortDir: string, limit: number, offset: number) {
+    this.isLoading.set(true);
+    this.userService.getAllUsers({ search, sortBy, sortDir, limit, offset }).subscribe({
+      next: (res) => {
+        // Expecting backend signature: { total: number, data: UserElement[] }
+        // If your API returns raw arrays directly, handle fallback arrays safely.
+        if (res && res.data) {
+          this.dataSource.data = res.data;
+          this.totalRecords.set(res.total);
+        } else {
+          this.dataSource.data = res;
+          this.totalRecords.set(res.length);
+        }
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        this.isLoading.set(false);
+        this.snackBar.open('Failed to load real-time users data!', 'Close', { duration: 3000 });
+      }
+    });
+  }
+
+  // 4. Handle UI Interaction Hooks
+  onPageChange(event: PageEvent) {
+    this.pageSize.set(event.pageSize);
+    // Dynamic offset calculations: pageIndex * pageSize (e.g., page 2 * limit 5 = offset 10)
+    this.pageOffset.set(event.pageIndex * event.pageSize);
+  }
+
   applyFilter() {
-    this.dataSource.filter = this.filterValue();
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
+    this.resetToFirstPage();
+  }
+
+  private resetToFirstPage() {
+    this.pageOffset.set(0);
+    if (this.paginator) {
+      this.paginator.pageIndex = 0;
     }
   }
 
+  // Remaining dialog logic modifications to run DB mutations instead of client mocks:
   addUser() {
-    const dialogRef = this.dialog.open(UserFormDialog, {
-      width: '400px',
-      data: null // Sending null lets the modal know it's a fresh entry
-    });
-
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result) {
-        // Generate a new incremental numerical ID safely
-        const nextId = this.usersList().length ? Math.max(...this.usersList().map(u => u.id)) + 1 : 1;
-
-        const newUser: UserElement = {
-          id: nextId,
-          username: result.username,
-          email: result.email,
-          mobile: result.mobile
-        };
-
-        this.usersList.update(list => [...list, newUser]);
-        this.refreshTable();
-      }
+    const dialogRef = this.dialog.open(UserFormDialog, { width: '400px', data: null });
+    dialogRef.afterClosed().subscribe(() => {
+      this.fetchBackendData(this.searchTerm(), this.sortBy(), this.sortDir(), this.pageSize(), this.pageOffset());
     });
   }
 
   editUser(user: UserElement) {
-    const dialogRef = this.dialog.open(UserFormDialog, {
-      width: '400px',
-      data: user // Pass the current selected user to populate fields
-    });
-
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result) {
-        this.usersList.update(list =>
-          list.map(u => u.id === user.id
-            ? { ...u, username: result.username, email: result.email, mobile: result.mobile }
-            : u
-          )
-        );
-        this.refreshTable();
-
-        // Trigger Success SnackBar for Edit User
-        this.snackBar.open('User updated successfully!', 'Close', {
-          duration: 3000,
-          horizontalPosition: 'center',
-          verticalPosition: 'bottom'
-        });
-      }
-    });
+    this.dialog.open(UserFormDialog, { width: '400px', data: user });
   }
 
   deleteUser(id: number) {
-    const dialogRef = this.dialog.open(ConfirmDialog, {
-      width: '350px',
-      data: { message: 'Are you sure you want to delete this record?' }
-    });
-
-    dialogRef.afterClosed().subscribe((confirmed: boolean) => {
+    const dialogRef = this.dialog.open(ConfirmDialog, { width: '350px', data: { message: 'Are you sure?' } });
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (confirmed) {
         this.userService.deleteUser(id).subscribe({
-          next: (res) => {this.deleteUser
-            this.usersList.update(list => list.filter(u => u.id !== id));
-            this.refreshTable();
-
-            this.snackBar.open('User deleted successfully.', 'Close', {
-              duration: 3000,
-              horizontalPosition: 'center',
-              verticalPosition: 'bottom'
-            });
+          next: () => {
+            this.fetchBackendData(this.searchTerm(), this.sortBy(), this.sortDir(), this.pageSize(), this.pageOffset());
+            this.snackBar.open('User deleted successfully.', 'Close', { duration: 3000 });
           },
-          error: (err) => {
-            this.snackBar.open('Failed to delete user!', 'Close', {
-              duration: 3000,
-              horizontalPosition: 'center',
-              verticalPosition: 'bottom'
-            });
-          }
+          error: () => this.snackBar.open('Deletion failed.', 'Close', { duration: 3000 })
         });
       }
     });
-  }
-
-  private refreshTable() {
-    this.dataSource.data = this.usersList();
   }
 
   logout() {
     this.authService.logout().subscribe({
       next: () => this.finalizeLogout(),
-      error: () => this.finalizeLogout() // Fail-safe client clearance
+      error: () => this.finalizeLogout()
     });
   }
 
   private finalizeLogout(): void {
     this.tokenService.clearTokens();
     this.router.navigate(['/login']);
-    this.snackBar.open("User logged out successfully!", 'Close', {
-      duration: 3000,
-      horizontalPosition: 'center',
-      verticalPosition: 'bottom'
-    });
+    this.snackBar.open("User logged out successfully!", 'Close', { duration: 3000 });
   }
 }

@@ -8,24 +8,20 @@
         </button>
     </mat-toolbar>
 
+    @if (isLoading()) {
+    <div class="table-loading-shimmer">Processing dynamic query requests...</div>
+    }
+
     <div class="table-actions-container">
         <div class="filter-controls">
-            <mat-form-field appearance="outline" class="select-field">
-                <mat-label>Filter Column</mat-label>
-                <mat-select [ngModel]="filterColumn()" (ngModelChange)="filterColumn.set($event); applyFilter()">
-                    <mat-option value="all">All Columns</mat-option>
-                    <mat-option value="username">Name</mat-option>
-                    <mat-option value="email">Email</mat-option>
-                    <mat-option value="mobile">Mobile No.</mat-option>
-                </mat-select>
-            </mat-form-field>
-
             <mat-form-field appearance="outline" class="search-field">
                 <mat-label>Search matching value</mat-label>
-                <input matInput [ngModel]="filterValue()" (ngModelChange)="filterValue.set($event); applyFilter()"
+
+                <input matInput [ngModel]="searchTerm()" (ngModelChange)="onSearchChange($event)"
                     placeholder="Type here..." />
-                @if (filterValue()) {
-                <button matSuffix mat-icon-button (click)="filterValue.set(''); applyFilter()">
+
+                @if (searchTerm()) {
+                <button matSuffix mat-icon-button (click)="clearSearch()">
                     <mat-icon>clear</mat-icon>
                 </button>
                 }
@@ -76,6 +72,8 @@
             <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
         </table>
 
-        <mat-paginator [pageSizeOptions]="[10, 50, 100]" showFirstLastButtons></mat-paginator>
+        <mat-paginator [length]="totalRecords()" [pageSize]="pageSize()" [pageSizeOptions]="[5, 10, 50, 100]"
+            (page)="onPageChange($event)" showFirstLastButtons>
+        </mat-paginator>
     </div>
 </div>

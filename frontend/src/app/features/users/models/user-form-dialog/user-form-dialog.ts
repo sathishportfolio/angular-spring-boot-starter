@@ -77,14 +77,15 @@ export class UserFormDialog {
             horizontalPosition: 'center',
             verticalPosition: 'bottom'
           });
-          this.dialogRef.close(this.userModel());
+
+          this.dialogRef.close(response);
         }, 1000);
       },
       error: (err) => {
         setTimeout(() => {
           this.isLoading.set(false);
 
-          let errorMessage = err.error?.error || 'An unexpected error occurred during signup.';
+          let errorMessage = err.error?.error || 'An unexpected error occurred while creating user.';
 
           this.snackBar.open(errorMessage, 'Close', {
             duration: 3000,

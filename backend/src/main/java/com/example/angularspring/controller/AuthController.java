@@ -56,7 +56,7 @@ public class AuthController {
 
         // TODO : validate each fields
         Optional<User> isAlreadyUser =
-                userRepository.findByUsernameOrEmailOrMobile(
+                userRepository.findFirstByUsernameOrEmailOrMobile(
                         request.getUsername(), request.getEmail(), request.getMobile());
         if (isAlreadyUser.isPresent()) {
             String errorMessage = "Duplicate record already exists with username,email or mobile";
