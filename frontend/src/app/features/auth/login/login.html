@@ -1,6 +1,16 @@
 <div class="login-container">
     <h2>Login</h2>
 
+    @if (showSessionExpiredMessage) {
+        <div class="session-expired-banner animate-fade-in">
+            <mat-icon class="warning-icon">update_disabled</mat-icon>
+            <div class="banner-content">
+                <strong>Session Expired</strong>
+                <p>Your security token has expired. Please log in again to continue.</p>
+            </div>
+        </div>
+    }
+
     <form class="login-form" [formRoot]="loginForm">
 
         <mat-form-field appearance="outline">

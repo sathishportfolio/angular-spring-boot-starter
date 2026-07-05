@@ -4,27 +4,38 @@ import { form, FormField, required, email, minLength, FormRoot } from '@angular/
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Auth } from '../services/auth';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TokenService } from '../../../core/services/token';
+import { MatIcon } from "@angular/material/icon";
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [RouterLink, FormField, FormRoot, MatFormFieldModule, MatInputModule, MatButtonModule],
+  imports: [RouterLink, FormField, FormRoot, MatFormFieldModule, MatInputModule, MatButtonModule, MatIcon],
   templateUrl: './login.html',
   styleUrl: './login.css',
 })
 
 export class Login {
 
+  showSessionExpiredMessage = false;
+
   private authService = inject(Auth);
   private tokenservice = inject(TokenService);
   private router = inject(Router);
   private snackBar = inject(MatSnackBar);
 
-  ngOnInit() { }
+  constructor(private route: ActivatedRoute) {}
+
+  ngOnInit(): void {
+    this.route.queryParams.subscribe(params => {
+      if (params['reason'] === 'jwt_token_expired') {
+        this.showSessionExpiredMessage = true;
+      }
+    });
+  }
 
   errorMessage: string = '';
   isLoading = signal(false);

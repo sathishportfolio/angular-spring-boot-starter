@@ -2,6 +2,7 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.1.0'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id 'com.diffplug.spotless' version '8.8.0'
 }
 
 group = 'com.example'
@@ -21,6 +22,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+	
 	runtimeOnly 'com.mysql:mysql-connector-j'
 	
 	// Updated JJWT dependencies
@@ -37,6 +41,23 @@ dependencies {
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+// Define formatting rules
+spotless {
+    java {
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+        
+        // Upgraded from 1.17.0 to 1.24.0 to fix the JDK compatibility bug
+        googleJavaFormat('1.24.0').aosp() 
+    }
+}
+
+// Automate: This cleanly runs formatting every single time you build
+tasks.named('compileJava') {
+    dependsOn 'spotlessApply'
 }
 
 tasks.named('test') {

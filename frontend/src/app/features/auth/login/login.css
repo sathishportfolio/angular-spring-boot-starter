@@ -11,3 +11,51 @@
   gap: 16px;
   margin-top: 20px;
 }
+
+/* Session Expired Banner Container */
+.session-expired-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: #fff3cd; /* Warm Material Warning Yellow background */
+  border: 1px solid #ffeeba;
+  border-left: 5px solid #ffc107; /* Clear accent boundary strip */
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Material Warning Icon Alignment */
+.warning-icon {
+  color: #856404;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Banner Text Structuring */
+.banner-content strong {
+  color: #856404;
+  font-size: 14px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.banner-content p {
+  color: #664d03;
+  font-size: 13px;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Entry Animation */
+@keyframes bannerFadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: bannerFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}

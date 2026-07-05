@@ -1,25 +1,26 @@
 package com.example.angularspring.security;
 
 import com.example.angularspring.model.RefreshToken;
+import com.example.angularspring.model.User;
 import com.example.angularspring.repository.RefreshTokenRepository;
 import com.example.angularspring.repository.UserRepository;
-import com.example.angularspring.model.User;
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
-import javax.crypto.SecretKey;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
 import java.time.Instant;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import javax.crypto.SecretKey;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class JwtUtil {
 
-    // 0.12.x requires a SecretKey type instead of Key
-    private final SecretKey key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
-    
+    //    private final SecretKey key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+    private final SecretKey key = Jwts.SIG.HS256.key().build();
+
     private final long accessTokenExpirationMs = 900000; // 15 Minutes
     private final long refreshTokenExpirationMs = 604800000; // 7 Days
 
@@ -32,30 +33,33 @@ public class JwtUtil {
     }
 
     // --- ACCESS TOKEN METHODS ---
-    public String generateAccessToken(String username) {
+    public String generateAccessToken(User user) {
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("userId", user.getId());
+        extraClaims.put("email", user.getEmail());
+        extraClaims.put("mobile", user.getMobile());
+
         return Jwts.builder()
-                .subject(username) // 0.12.x syntax change (setSubject -> subject)
-                .issuedAt(new Date()) // 0.12.x syntax change (setIssuedAt -> issuedAt)
-                .expiration(new Date(System.currentTimeMillis() + accessTokenExpirationMs)) // setExpiration -> expiration
-                .signWith(key) // Algorithm is inferred automatically from the key type
+                .claims(extraClaims)
+                .subject(user.getUsername())
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + accessTokenExpirationMs))
+                .signWith(key)
                 .compact();
     }
 
     public String getUsernameFromToken(String token) {
         return Jwts.parser()
-                .verifyWith(key) // 0.12.x syntax change (setSigningKey -> verifyWith)
+                .verifyWith(key)
                 .build()
-                .parseSignedClaims(token) // 0.12.x syntax change (parseClaimsJws -> parseSignedClaims)
-                .getPayload() // 0.12.x syntax change (getBody -> getPayload)
+                .parseSignedClaims(token)
+                .getPayload()
                 .getSubject();
     }
 
     public boolean validateAccessToken(String token) {
         try {
-            Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token);
+            Jwts.parser().verifyWith(key).build().parseSignedClaims(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
             return false;
@@ -64,8 +68,10 @@ public class JwtUtil {
 
     // --- REFRESH TOKEN METHODS ---
     public RefreshToken createRefreshToken(String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user =
+                userRepository
+                        .findByUsername(username)
+                        .orElseThrow(() -> new RuntimeException("User not found"));
 
         // Delete any existing refresh token for this user to avoid duplication
         refreshTokenRepository.deleteByUser(user);
