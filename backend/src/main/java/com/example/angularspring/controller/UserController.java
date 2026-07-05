@@ -40,7 +40,7 @@ public class UserController {
 	public ResponseEntity<?> createUser(@RequestBody User user) {
 		Optional<User> isAlreadyUser = userRepository.findFirstByUsernameOrEmailOrMobile(user.getUsername(), user.getEmail(), user.getMobile());
 		if (isAlreadyUser.isPresent()) {
-			return ResponseEntity.badRequest().body(Map.of("error", "Username already exists"));
+			return ResponseEntity.badRequest().body(Map.of("error", "Duplicate record already exists with username,email or mobile"));
 		}
 		// TODO : Check hibernate validation library uses
 		if (user.getPassword() == null || user.getPassword().isBlank()) {

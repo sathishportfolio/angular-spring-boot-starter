@@ -173,8 +173,10 @@ export class Dashboard implements AfterViewInit {
   // Remaining dialog logic modifications to run DB mutations instead of client mocks:
   addUser() {
     const dialogRef = this.dialog.open(UserFormDialog, { width: '400px', data: null });
-    dialogRef.afterClosed().subscribe(() => {
-      this.fetchBackendData(this.searchTerm(), this.sortBy(), this.sortDir(), this.pageSize(), this.pageOffset());
+    dialogRef.afterClosed().subscribe((result) => {debugger
+      if (result) {
+        this.fetchBackendData(this.searchTerm(), this.sortBy(), this.sortDir(), this.pageSize(), this.pageOffset());
+      }
     });
   }
 
